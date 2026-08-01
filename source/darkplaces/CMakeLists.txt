@@ -1,21 +1,24 @@
 # ============================================================================
-# DarkPlaces 引擎模块
-# 源文件清单与编译定义与 makefile.inc 保持一致：
+# DarkPlaces 引擎模块（Windows / Linux）
+# 源文件清单与 makefile.inc 保持一致：
 #   - SDL 客户端：OBJ_SDL（sys_sdl / vid_sdl / snd_sdl / cd_sdl / 菜单 / 视频捕获）
 #   - 专用服务器：OBJ_SV（sys_linux / vid_null / thread_null / snd_null）
-# 当前模块面向 Windows/MSVC；其他平台请继续使用仓库自带 Makefile。
+# Windows 使用 MSVC + vcpkg；Linux 使用系统包（SDL2 通过 pkg-config 查找）。
+# 其他平台请继续使用仓库自带 Makefile。
 # ============================================================================
 
-if(NOT WIN32)
+if(WIN32)
+    include("${CMAKE_SOURCE_DIR}/cmake/XonoticThirdPartyDlls.cmake")
+    find_package(SDL2 CONFIG REQUIRED)
+elseif(UNIX AND NOT APPLE)
+    message(STATUS "darkplaces：Linux 构建（SDL 客户端 + 专用服务器，系统包管理）")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(DP_SDL2 REQUIRED IMPORTED_TARGET sdl2)
+else()
     message(STATUS
-        "darkplaces：CMake 模块当前仅面向 Windows，"
-        "其他平台请使用 source/darkplaces/Makefile 构建")
+        "darkplaces：此平台请使用 source/darkplaces/Makefile 构建")
     return()
 endif()
-
-include("${CMAKE_SOURCE_DIR}/cmake/XonoticThirdPartyDlls.cmake")
-
-find_package(SDL2 CONFIG REQUIRED)
 
 set(DP_SRC "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -37,13 +40,16 @@ set(DP_COMMON_SOURCES
     wad.c world.c zone.c)
 list(TRANSFORM DP_COMMON_SOURCES PREPEND "${DP_SRC}/")
 
-# 平台公共定义：对象库与两个可执行目标都要使用
+# ---- 平台公共定义 -----------------------------------------------------------
 set(DP_PLATFORM_DEFS
-    WIN32
-    $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>:WIN64>
     _FILE_OFFSET_BITS=64
-    __KERNEL_STRICT_NAMES
-    _CRT_SECURE_NO_WARNINGS)
+    __KERNEL_STRICT_NAMES)
+if(WIN32)
+    list(APPEND DP_PLATFORM_DEFS
+        WIN32
+        $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>:WIN64>
+        _CRT_SECURE_NO_WARNINGS)
+endif()
 
 # 客户端特性定义（对应 Makefile 的 CFLAGS_CLIENT；服务器目标不携带）
 set(DP_CLIENT_FEATURE_DEFS
@@ -62,7 +68,13 @@ endforeach()
 unset(_lib)
 target_compile_definitions(dp_engine_common_client PRIVATE ${DP_CLIENT_FEATURE_DEFS})
 
-# ---- 可选链接的第三方库（默认运行时 dlopen，与 mingw 行为一致）-------------
+# 上游 OPTIM_RELEASE 含 -fno-strict-aliasing（GCC/Clang）
+if(NOT MSVC)
+    target_compile_options(dp_engine_common_client PRIVATE -fno-strict-aliasing)
+    target_compile_options(dp_engine_common_server  PRIVATE -fno-strict-aliasing)
+endif()
+
+# ---- 可选链接的第三方库（默认运行时 dlopen）--------------------------------
 set(DP_EXTRA_LIBS)
 
 if(XONOTIC_ENGINE_ZLIB_SHARED)
@@ -117,12 +129,6 @@ endif()
 
 set(DP_BUILDDATE_DEFS SVNREVISION=${_git_rev} BUILDTYPE=release)
 
-# CMake 的 VS 生成器会整体替换 MSBuild 默认依赖列表，这里显式补上标准
-# Windows 系统库（与上游 darkplaces-sdl2-vs2017.vcxproj 的依赖一致）。
-set(DP_WIN32_SYSTEM_LIBS
-    kernel32 user32 gdi32 winspool comdlg32 advapi32
-    shell32 ole32 oleaut32 uuid)
-
 # ---- SDL 客户端（对应 OBJ_SDL）-----------------------------------------------
 set(DP_CLIENT_SOURCES
     builddate.c sys_sdl.c vid_sdl.c thread_sdl.c
@@ -132,26 +138,38 @@ set(DP_CLIENT_SOURCES
     cap_avi.c cap_ogg.c)
 list(TRANSFORM DP_CLIENT_SOURCES PREPEND "${DP_SRC}/")
 
-add_executable(xonotic-local-sdl WIN32
-    ${DP_CLIENT_SOURCES} "${DP_SRC}/darkplaces.rc"
+set(DP_CLIENT_EXTRA)
+if(WIN32)
+    list(APPEND DP_CLIENT_EXTRA "${DP_SRC}/darkplaces.rc")
+endif()
+
+add_executable(xonotic-local-sdl
+    ${DP_CLIENT_SOURCES} ${DP_CLIENT_EXTRA}
     $<TARGET_OBJECTS:dp_engine_common_client>)
 target_compile_definitions(xonotic-local-sdl PRIVATE
     ${DP_PLATFORM_DEFS}
     ${DP_CLIENT_FEATURE_DEFS}
     ${DP_BUILDDATE_DEFS})
-target_link_libraries(xonotic-local-sdl PRIVATE
-    SDL2::SDL2 ${DP_EXTRA_LIBS} winmm ws2_32 ${DP_WIN32_SYSTEM_LIBS})
 
-# SDL2main 由 sys_sdl.c 的 #pragma comment 引用，vcpkg 将其放在 lib/manual-link
-if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
-    set(_dp_sdl2_manual_link
-        "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/manual-link")
-    if(EXISTS "${_dp_sdl2_manual_link}")
-        target_link_directories(xonotic-local-sdl PRIVATE "${_dp_sdl2_manual_link}")
+if(WIN32)
+    set_target_properties(xonotic-local-sdl PROPERTIES WIN32_EXECUTABLE TRUE)
+    target_link_libraries(xonotic-local-sdl PRIVATE
+        SDL2::SDL2 ${DP_EXTRA_LIBS} winmm ws2_32
+        kernel32 user32 gdi32 winspool comdlg32 advapi32
+        shell32 ole32 oleaut32 uuid)
+    # SDL2main 由 sys_sdl.c 的 #pragma comment 引用，vcpkg 将其放在 lib/manual-link
+    if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+        set(_dp_sdl2_manual_link
+            "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib/manual-link")
+        if(EXISTS "${_dp_sdl2_manual_link}")
+            target_link_directories(xonotic-local-sdl PRIVATE "${_dp_sdl2_manual_link}")
+        endif()
     endif()
+    xonotic_copy_thirdparty_dlls(xonotic-local-sdl)
+else()
+    target_link_libraries(xonotic-local-sdl PRIVATE
+        PkgConfig::DP_SDL2 ${DP_EXTRA_LIBS} m dl rt pthread)
 endif()
-
-xonotic_copy_thirdparty_dlls(xonotic-local-sdl)
 
 # ---- 专用服务器（对应 OBJ_SV）--------------------------------------------------
 set(DP_SERVER_SOURCES
@@ -162,9 +180,22 @@ add_executable(xonotic-local-dedicated
     ${DP_SERVER_SOURCES} $<TARGET_OBJECTS:dp_engine_common_server>)
 target_compile_definitions(xonotic-local-dedicated PRIVATE
     ${DP_PLATFORM_DEFS} ${DP_BUILDDATE_DEFS})
-target_link_libraries(xonotic-local-dedicated PRIVATE
-    ${DP_EXTRA_LIBS} winmm ws2_32 ${DP_WIN32_SYSTEM_LIBS})
 
-xonotic_copy_thirdparty_dlls(xonotic-local-dedicated)
+if(WIN32)
+    target_link_libraries(xonotic-local-dedicated PRIVATE
+        ${DP_EXTRA_LIBS} winmm ws2_32
+        kernel32 user32 gdi32 winspool comdlg32 advapi32
+        shell32 ole32 oleaut32 uuid)
+    xonotic_copy_thirdparty_dlls(xonotic-local-dedicated)
+else()
+    target_link_libraries(xonotic-local-dedicated PRIVATE
+        ${DP_EXTRA_LIBS} m dl rt pthread)
+endif()
+
+# 上游 OPTIM_RELEASE 对全部文件启用 -fno-strict-aliasing（GCC/Clang）
+if(NOT MSVC)
+    target_compile_options(xonotic-local-sdl PRIVATE -fno-strict-aliasing)
+    target_compile_options(xonotic-local-dedicated PRIVATE -fno-strict-aliasing)
+endif()
 
 message(STATUS "darkplaces：SDL 客户端 -> xonotic-local-sdl，服务器 -> xonotic-local-dedicated")

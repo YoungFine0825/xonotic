@@ -1,8 +1,10 @@
 # ============================================================================
 # Xonotic 模块化 CMake 构建体系
 #
-# 目标平台：Windows（默认 MSVC）+ vcpkg（依赖声明见 vcpkg.json；
-# vcpkg 根目录由环境变量 VCPKG_ROOT 指定，不写死绝对路径）
+# 目标平台：
+#   - Windows：默认 MSVC + vcpkg（依赖声明见 vcpkg.json；
+#     vcpkg 根目录由环境变量 VCPKG_ROOT 指定，不写死绝对路径）
+#   - Linux：系统包管理（SDL2 等通过 pkg-config / find_package 查找）
 # 产物布局：
 #   - 可执行文件与项目自身 DLL  -> 仓库根目录
 #   - 第三方 vcpkg DLL          -> 根目录 bin32 / bin64（按目标架构）
@@ -16,7 +18,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # --- vcpkg 工具链（未显式指定时自动探测） ------------------------------------
-if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+if(CMAKE_HOST_WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT} AND NOT "$ENV{VCPKG_ROOT}" STREQUAL "")
         set(_vcpkg_root "$ENV{VCPKG_ROOT}")
         if(EXISTS "${_vcpkg_root}/scripts/buildsystems/vcpkg.cmake")
@@ -66,12 +68,12 @@ endif()
 # --- 输出目录布局 ---------------------------------------------------------------
 # 可执行文件与项目自身 DLL 输出到仓库根目录；中间产物留在构建目录。
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_PDB_OUTPUT_DIRECTORY     "${CMAKE_BINARY_DIR}/pdb")
 foreach(_cfg DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${_cfg} "${CMAKE_SOURCE_DIR}")
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${_cfg} "${CMAKE_BINARY_DIR}/lib")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${_cfg} "${CMAKE_SOURCE_DIR}")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${_cfg} "${CMAKE_BINARY_DIR}/lib")
     set(CMAKE_PDB_OUTPUT_DIRECTORY_${_cfg}     "${CMAKE_BINARY_DIR}/pdb")
 endforeach()

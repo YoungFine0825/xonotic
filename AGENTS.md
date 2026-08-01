@@ -20,6 +20,9 @@ Windows 下优先使用仓库根目录的模块化 CMake 构建（MSVC + vcpkg�
 - 可执行文件与项目自身 DLL 输出到仓库根目录；第三方 DLL 输出到根目录 `bin64`（x64）或 `bin32`（x86）。
 - x86 构建使用 `cmake --preset msvc-x86`（需先安装对应三元组依赖，如 `vcpkg install sdl2:x86-windows`）。
 
+Linux 使用系统包管理（无需 vcpkg）：`cmake --preset linux` 配置，
+`cmake --build --preset linux` 构建；所需依赖包见 `BUILDING.md` 第 1 节。
+
 原有 Makefile 方式（`make -C source/darkplaces` 等）仍适用于非 Windows 平台。
 
 顶层 `Makefile` 仅用于 stable 与 autobuild 发布树，在 git 检出中会直接报错。检出源码时应分别构建各组件：
