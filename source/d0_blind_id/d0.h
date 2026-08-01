@@ -36,11 +36,24 @@
 #ifndef __D0_H__
 #define __D0_H__
 
+#if defined(_MSC_VER)
+#include <stddef.h> // size_t
+#include <BaseTsd.h> // SSIZE_T
+typedef SSIZE_T ssize_t;
+#ifdef D0_BUILDING_DLL
+#define D0_EXPORT __declspec(dllexport)
+#else
+#define D0_EXPORT __declspec(dllimport)
+#endif
+#define D0_USED
+#define D0_WARN_UNUSED_RESULT
+#else
 #include <unistd.h> // size_t
 
 #define D0_EXPORT __attribute__((__visibility__("default")))
 #define D0_USED __attribute__((used))
 #define D0_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#endif
 #define D0_BOOL int
 
 typedef void *(d0_malloc_t)(size_t len);

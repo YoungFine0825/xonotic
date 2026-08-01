@@ -1,0 +1,29 @@
+{
+  "name": "xonotic",
+  "version-string": "git",
+  "description": "Xonotic third-party dependencies (engine, crypto, tooling)",
+  "dependencies": [
+    "sdl2",
+    "zlib",
+    "mpir",
+    "libjpeg-turbo",
+    "libpng",
+    "libogg",
+    "libvorbis",
+    "libtheora",
+    {
+      "name": "curl",
+      "default-features": false,
+      "features": [
+        "schannel"
+      ]
+    },
+    {
+      "name": "freetype",
+      "default-features": false,
+      "features": [
+        "zlib"
+      ]
+    }
+  ]
+}

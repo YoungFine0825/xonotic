@@ -1,10 +1,16 @@
-cmake_minimum_required(VERSION 2.8)
-project(gmqcc)
+cmake_minimum_required(VERSION 3.21)
+project(gmqcc LANGUAGES CXX)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+if(MSVC)
+    # MSVC：关闭 RTTI 与异常，对应上游 -fno-rtti / -fno-exceptions
+    add_compile_options(/GR- /EHs-c- /W3)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
 
 set(SOURCE_FILES
     algo.h

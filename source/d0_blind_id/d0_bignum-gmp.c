@@ -228,17 +228,18 @@ d0_bignum_t *d0_iobuf_read_bignum(d0_iobuf_t *buf, d0_bignum_t *bignum)
 ssize_t d0_bignum_export_unsigned(const d0_bignum_t *bignum, void *buf, size_t bufsize)
 {
 	size_t count;
+	unsigned char *out = (unsigned char *) buf;
 	count = (mpz_sizeinbase(bignum->z, 2) + 7) / 8;
 	if(count > bufsize)
 		return -1;
 	if(bufsize > count)
 	{
 		// pad from left (big endian numbers!)
-		memset(buf, 0, bufsize - count);
-		buf += bufsize - count;
+		memset(out, 0, bufsize - count);
+		out += bufsize - count;
 	}
 	bufsize = count;
-	mpz_export(buf, &bufsize, 1, 1, 0, 0, bignum->z);
+	mpz_export(out, &bufsize, 1, 1, 0, 0, bignum->z);
 	if(bufsize > count)
 	{
 		// REALLY BAD
@@ -254,12 +255,12 @@ ssize_t d0_bignum_export_unsigned(const d0_bignum_t *bignum, void *buf, size_t b
 		// move the number
 		if(count == 0)
 		{
-			memset(buf, 0, count);
+			memset(out, 0, count);
 		}
 		else
 		{
-			memmove(buf + count - bufsize, buf, bufsize);
-			memset(buf, 0, count - bufsize);
+			memmove(out + count - bufsize, out, bufsize);
+			memset(out, 0, count - bufsize);
 		}
 	}
 	return bufsize;

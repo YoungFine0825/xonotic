@@ -1,0 +1,40 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "msvc-x64",
+      "displayName": "MSVC x64 + vcpkg（默认）",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/msvc-x64",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
+      }
+    },
+    {
+      "name": "msvc-x86",
+      "displayName": "MSVC Win32 + vcpkg",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "Win32",
+      "binaryDir": "${sourceDir}/build/msvc-x86",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x86-windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "msvc-x64",
+      "configurePreset": "msvc-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "msvc-x86",
+      "configurePreset": "msvc-x86",
+      "configuration": "Release"
+    }
+  ]
+}

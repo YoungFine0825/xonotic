@@ -67,9 +67,9 @@ struct sfloat_state_t {
 #ifdef _MSC_VER
 /* MSVC has an intrinsic for this */
     static GMQCC_INLINE uint32_t sfloat_clz(uint32_t x) {
-        int r = 0;
+        unsigned long r = 0;
         _BitScanForward(&r, x);
-        return r;
+        return (uint32_t) r;
     }
 #   define SFLOAT_CLZ(X, SUB) \
         (sfloat_clz((X)) - (SUB))
@@ -1527,7 +1527,11 @@ ast_expression *fold::intrinsic_fabs(ast_value *a) {
     return constgen_float(fabsf(immvalue_float(a)), false);
 }
 ast_expression* fold::intrinsic_nan(void) {
+#ifdef _MSC_VER
+    return constgen_float(NAN, false);
+#else
     return constgen_float(0.0f / 0.0f, false);
+#endif
 }
 ast_expression* fold::intrinsic_epsilon(void) {
   static bool calculated = false;
@@ -1542,7 +1546,11 @@ ast_expression* fold::intrinsic_epsilon(void) {
 }
 
 ast_expression* fold::intrinsic_inf(void) {
+#ifdef _MSC_VER
+  return constgen_float(INFINITY, false);
+#else
   return constgen_float(1.0f / 0.0f, false);
+#endif
 }
 
 ast_expression *fold::intrinsic(const char *intrinsic, size_t n_args, ast_expression **args) {
