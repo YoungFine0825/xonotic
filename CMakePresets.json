@@ -32,6 +32,22 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "msys2",
+      "displayName": "Windows + MSYS2（MinGW64，用于 q3map2；需设置 MSYS2_ROOT 环境变量）",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/msys2",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/source/tools/q3map2/msys2-toolchain.cmake",
+        "CMAKE_BUILD_TYPE": "Release",
+        "XONOTIC_Q3MAP2_TOOLCHAIN": "msys2",
+        "XONOTIC_BUILD_ENGINE": "OFF",
+        "XONOTIC_BUILD_GMQCC": "OFF",
+        "XONOTIC_BUILD_D0_BLIND_ID": "OFF",
+        "XONOTIC_BUILD_GAMECODE": "OFF",
+        "XONOTIC_BUILD_Q3MAP2": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -48,6 +64,10 @@
     {
       "name": "linux",
       "configurePreset": "linux"
+    },
+    {
+      "name": "msys2",
+      "configurePreset": "msys2"
     }
   ]
 }

@@ -17,6 +17,10 @@
 
 cmake_minimum_required(VERSION 3.21)
 
+# --- 提前定义模块选项（project() 前需要根据它决定 vcpkg manifest features）---
+set(XONOTIC_BUILD_Q3MAP2 OFF
+    CACHE BOOL "构建 q3map2 地图编译工具（bsp/vis/light，位于 source/tools）")
+
 # --- vcpkg 工具链（未显式指定时自动探测） ------------------------------------
 if(CMAKE_HOST_WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT} AND NOT "$ENV{VCPKG_ROOT}" STREQUAL "")
@@ -32,6 +36,18 @@ if(CMAKE_HOST_WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
             "未设置 VCPKG_ROOT 环境变量，未自动加载 vcpkg 工具链。"
             "请先设置（PowerShell: $env:VCPKG_ROOT='<vcpkg路径>'）"
             "或显式指定 -DCMAKE_TOOLCHAIN_FILE=...")
+    endif()
+endif()
+
+# q3map2 依赖较多（glib/libwebp/libxml2/minizip 等），启用时通过 vcpkg
+# manifest feature 自动安装（vcpkg.json 的 "q3map2" 特性），避免默认构建下载。
+if(XONOTIC_BUILD_Q3MAP2)
+    if(NOT DEFINED VCPKG_MANIFEST_FEATURES)
+        set(VCPKG_MANIFEST_FEATURES "q3map2"
+            CACHE STRING "vcpkg manifest features")
+    elseif(NOT ";${VCPKG_MANIFEST_FEATURES};" MATCHES ";q3map2;")
+        set(VCPKG_MANIFEST_FEATURES "${VCPKG_MANIFEST_FEATURES};q3map2"
+            CACHE STRING "vcpkg manifest features" FORCE)
     endif()
 endif()
 
@@ -101,3 +117,5 @@ endif()
 if(XONOTIC_BUILD_GAMECODE)
     add_subdirectory(source/qcsrc)
 endif()
+
+add_subdirectory(source/tools)

@@ -15,7 +15,7 @@
       "name": "curl",
       "default-features": false,
       "features": [
-        "schannel"
+        "ssl"
       ]
     },
     {
@@ -25,5 +25,17 @@
         "zlib"
       ]
     }
-  ]
+  ],
+  "features": {
+    "q3map2": {
+      "description": "q3map2 map compiler dependencies (bsp/vis/light)",
+      "dependencies": [
+        "glib",
+        "libwebp",
+        "libxml2",
+        "minizip",
+        "pkgconf"
+      ]
+    }
+  }
 }

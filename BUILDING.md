@@ -37,6 +37,19 @@ sudo apt install build-essential cmake git pkg-config \
 > `XONOTIC_ENGINE_*_SHARED` 直接链接，还需对应 `-dev` 包
 > （如 `libjpeg62-turbo-dev`、`zlib1g-dev`）。
 
+### 构建 q3map2（地图编译工具）所需额外包
+
+q3map2 是可选模块（`-DXONOTIC_BUILD_Q3MAP2=ON`，默认关闭）。启用时需要：
+
+```bash
+sudo apt install libglib2.0-dev libwebp-dev libminizip-dev \
+    libjpeg62-turbo-dev libpng-dev libxml2-dev
+```
+
+Windows 下启用 `-DXONOTIC_BUILD_Q3MAP2=ON` 时，vcpkg 会通过
+`vcpkg.json` 的 `q3map2` feature 自动安装 glib、libwebp、libxml2、minizip、
+pkgconf（不启用则不安装这些依赖）。
+
 ## 2. Windows：设置 VCPKG_ROOT 环境变量
 
 构建配置不包含 vcpkg 的绝对路径，请用环境变量 `VCPKG_ROOT` 指向 vcpkg 根目录。
@@ -61,7 +74,7 @@ $env:VCPKG_ROOT = "C:\path\to\vcpkg"   # 替换为你的 vcpkg 根目录
 | libjpeg-turbo | JPEG 贴图 |
 | libpng | PNG 贴图 |
 | libogg / libvorbis / libtheora | OGG 音频与录像编码 |
-| curl（schannel 特性） | 主服务器查询、下载（Windows 原生 TLS，无额外 DLL） |
+| curl（ssl 特性） | 主服务器查询、下载（Windows 上为 schannel，无额外 DLL） |
 | freetype（仅 zlib 特性） | 字体渲染 |
 
 ## 4. Windows：配置与构建（x64，默认）
@@ -83,6 +96,44 @@ cmake --build build/msvc-x64 --target gamecode
 
 游戏代码预处理优先使用 PATH 中的 `gcc`（与上游流程一致）；没有 gcc 时自动回退到
 MSVC 的 `cl /E`。
+
+## 5b. 构建地图编译工具 q3map2（可选）
+
+### 方式一：MSYS2 工具链（推荐，无需等待 vcpkg 依赖）
+
+Windows 上可使用已安装的 MSYS2（MinGW64）编译 q3map2。工具链路径不写死在
+构建文件里，通过环境变量 `MSYS2_ROOT` 指定：
+
+```powershell
+$env:MSYS2_ROOT = "C:\path\to\msys64"          # 替换为你的 MSYS2 根目录
+$env:PATH = "$env:MSYS2_ROOT\mingw64\bin;$env:PATH"   # 构建阶段需要
+
+cmake --preset msys2
+cmake --build --preset msys2 --target q3map2
+```
+
+产物 `q3map2.exe` 输出到仓库根目录。依赖（glib、libwebp、minizip、libjpeg、
+libpng、libxml2）来自 MSYS2 的 mingw64 包，通过其 pkg-config 自动查找，无需
+vcpkg。配置阶段会自动把 `$MSYS2_ROOT/mingw64/bin` 加入 PATH，构建阶段需自行
+保证（如上设置，或使用 MSYS2 的 MinGW64 终端）。
+
+工具链通过 `-DXONOTIC_Q3MAP2_TOOLCHAIN=msys2` 选择（`auto` 时 MSVC 构建
+自动用 MSVC，其余用 pkg-config）。
+
+### 方式二：MSVC + vcpkg
+
+```powershell
+cmake --preset msvc-x64 -DXONOTIC_BUILD_Q3MAP2=ON
+cmake --build build/msvc-x64 --target q3map2
+```
+
+产物 `q3map2.exe` 输出到仓库根目录，用于编译地图（`-bsp`/`-vis`/`-light`
+等阶段），配套脚本见 `misc/tools/xonotic-map-compiler`。Linux 下：
+
+```bash
+cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release -DXONOTIC_BUILD_Q3MAP2=ON
+cmake --build build/linux --target q3map2
+```
 
 ## 6. Windows：第三方 DLL 对齐官方发布版
 
