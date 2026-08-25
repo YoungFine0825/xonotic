@@ -1,4 +1,4 @@
-/* -------------------------------------------------------------------------------
+﻿/* -------------------------------------------------------------------------------
 
    Copyright (C) 1999-2007 id Software, Inc. and contributors.
    For a list of contributors, see the accompanying CONTRIBUTORS file.
@@ -2089,6 +2089,18 @@ int main( int argc, char **argv ){
 
 #ifdef WIN32
 	_setmaxstdio(2048);
+
+	/* 从可执行文件旁的 lib/ 目录加载第三方 DLL（延迟加载的依赖库），
+	   例如从 <根目录>/q3map2.exe 运行时即 <根目录>/lib */
+	{
+		char dllDir[ 1024 ];
+		ExtractFilePath( argv[ 0 ], dllDir );
+		if ( dllDir[ 0 ] )
+			strcat( dllDir, "/lib" );
+		else
+			strcpy( dllDir, "lib" );
+		SetDllDirectory( dllDir );
+	}
 #endif
 
 	/* we want consistent 'randomness' */

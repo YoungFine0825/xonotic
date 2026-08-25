@@ -34,6 +34,8 @@ function(xonotic_copy_thirdparty_dlls target)
         set(_dll_map
             "SDL2.dll" "SDL2.dll"
             "zlib1.dll" "zlib1.dll"
+            "z.dll" "z.dll"
+            "z.dll" "zlib1.dll"
             "mpir.dll" "mpir.dll"
             "libpng16.dll" "libpng16.dll"
             "ogg.dll" "libogg.dll"
@@ -45,7 +47,8 @@ function(xonotic_copy_thirdparty_dlls target)
             "theora.dll" "libtheora-0.dll"
             "libcurl.dll" "libcurl-4.dll"
             "jpeg62.dll" "libjpeg.dll"
-            "freetype.dll" "libfreetype-6.dll")
+            "freetype.dll" "libfreetype-6.dll"
+            "ode_double.dll" "libode3.dll")
         list(LENGTH _dll_map _map_n)
         math(EXPR _map_last "${_map_n} - 1")
         set(_dlls "")

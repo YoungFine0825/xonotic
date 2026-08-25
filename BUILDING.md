@@ -17,6 +17,7 @@
 ```bash
 sudo apt install build-essential cmake git pkg-config \
     libsdl2-dev libgmp-dev \
+    libode-dev \
     zlib1g libjpeg62-turbo libpng16-16 libogg0 \
     libvorbis0a libvorbisenc2 libvorbisfile3 libtheora0 \
     libcurl4 libfreetype6
@@ -32,6 +33,7 @@ sudo apt install build-essential cmake git pkg-config \
 | zlib1g、libjpeg62-turbo、libpng16-16 | 解压与贴图（引擎运行时 dlopen） |
 | libogg0、libvorbis0a、libvorbisenc2、libvorbisfile3、libtheora0 | OGG 音频与录像（运行时 dlopen） |
 | libcurl4、libfreetype6 | 主服务器查询与字体渲染（运行时 dlopen） |
+| libode | ODE 刚体动力学（运行时 dlopen；引擎默认启用 USEODE，未安装则禁用相关功能） |
 
 > 默认这些库为运行时 dlopen 加载，只需安装运行库；若开启
 > `XONOTIC_ENGINE_*_SHARED` 直接链接，还需对应 `-dev` 包
@@ -120,6 +122,10 @@ vcpkg。配置阶段会自动把 `$MSYS2_ROOT/mingw64/bin` 加入 PATH，构建�
 工具链通过 `-DXONOTIC_Q3MAP2_TOOLCHAIN=msys2` 选择（`auto` 时 MSVC 构建
 自动用 MSVC，其余用 pkg-config）。
 
+> 注：MinGW 链接器不支持延迟加载，因此 **MSYS2 构建的 q3map2** 运行时需要
+> 将根目录 `lib/` 加入 PATH（第三方 DLL 已集中在该目录）：
+> `$env:PATH = "$env:PATH;$PWD\lib"`。MSVC 构建则自动从 `lib/` 加载，无需此步骤。
+
 ### 方式二：MSVC + vcpkg
 
 ```powershell
@@ -134,6 +140,16 @@ cmake --build build/msvc-x64 --target q3map2
 cmake -S . -B build/linux -DCMAKE_BUILD_TYPE=Release -DXONOTIC_BUILD_Q3MAP2=ON
 cmake --build build/linux --target q3map2
 ```
+
+### q3map2 第三方库目录
+
+q3map2 依赖的第三方 DLL（glib、libwebp、libxml2、minizip、libjpeg、libpng 及
+其依赖）集中输出到仓库根目录的 `lib/`：
+
+- **MSVC 构建**：通过延迟加载（`/DELAYLOAD`）从 `lib/` 自动加载，无需额外配置
+- **MSYS2 构建**：运行时需将 `lib/` 加入 PATH（见上）
+
+该目录不影响引擎构建（引擎的第三方 DLL 仍在 `bin64`/`bin32`）。
 
 ## 6. Windows：第三方 DLL 对齐官方发布版
 

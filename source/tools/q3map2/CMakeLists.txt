@@ -135,6 +135,15 @@ if(_q3map2_toolchain STREQUAL "msvc")
         ${Q3MAP2_MINIZIP_TARGET}
         PkgConfig::Q3MAP2_GLIB
         ws2_32)
+    # 延迟加载第三方 DLL，使其从根目录 lib/ 加载（见 main.c 的 SetDllDirectory）
+    target_link_libraries(q3map2 PRIVATE delayimp)
+    target_link_options(q3map2 PRIVATE
+        "/DELAYLOAD:glib-2.0-0.dll"
+        "/DELAYLOAD:libwebp.dll"
+        "/DELAYLOAD:libxml2.dll"
+        "/DELAYLOAD:minizip.dll"
+        "/DELAYLOAD:jpeg62.dll"
+        "/DELAYLOAD:libpng16.dll")
 else()
     target_link_libraries(q3map2 PRIVATE
         PkgConfig::Q3MAP2_JPEG
@@ -146,8 +155,63 @@ else()
     if(WIN32)
         # MSYS2/MinGW 是 Windows 目标：winsock 与运行时库
         target_link_libraries(q3map2 PRIVATE ws2_32)
+        # MinGW 的链接器不支持 --delayload（延迟加载），因此 MSYS2 构建
+        # 的第三方 DLL 需通过 PATH 提供（见 BUILDING.md）；这里仅将
+        # C/C++ 运行时静态链接，避免对 libstdc++/libgcc_s/winpthread 的
+        # 启动期 DLL 依赖。
+        target_link_options(q3map2 PRIVATE
+            -static-libgcc
+            -static-libstdc++
+            -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic)
     else()
         target_link_libraries(q3map2 PRIVATE m pthread)
+    endif()
+endif()
+
+# ---- MSVC 栈大小 ----------------------------------------------------------
+# q3map2 部分函数在栈上声明 MAX_MAP_DRAW_SURFS(0x20000) 大小的数组
+# （如 patch.c 的 PatchMapDrawSurfs 约 1.3MB，writebsp.c 的
+# RestoreSurfaceFlags 约 512KB）。MSVC 链接器默认只保留 1MB 栈，
+# 会触发 STATUS_STACK_OVERFLOW（0xC00000FD），因此加大栈保留空间。
+# 该设置与上游 NetRadiant 源码无关，仅属于 MSVC 工具链集成。
+if(MSVC)
+    target_link_options(q3map2 PRIVATE /STACK:16777216)
+endif()
+
+# ---- 第三方 DLL 集中到根目录 lib/（q3map2 运行时从该目录加载）----------------
+set(Q3MAP2_LIB_DIR "${CMAKE_SOURCE_DIR}/lib")
+if(WIN32)
+    set(_dll_src "")
+    set(_dll_list "")
+    if(_q3map2_toolchain STREQUAL "msvc")
+        set(_dll_src "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        set(_dll_list
+            glib-2.0-0.dll intl-8.dll pcre2-8.dll iconv-2.dll charset-1.dll
+            ffi-8.dll z.dll
+            libwebp.dll libsharpyuv.dll libxml2.dll minizip.dll
+            jpeg62.dll libpng16.dll)
+    elseif(_q3map2_toolchain STREQUAL "msys2")
+        set(_dll_src "$ENV{MSYS2_ROOT}/mingw64/bin")
+        set(_dll_list
+            libglib-2.0-0.dll libintl-8.dll libpcre2-8-0.dll
+            libgcc_s_seh-1.dll libwinpthread-1.dll
+            libwebp-7.dll libxml2-2.dll libminizip-1.dll
+            libjpeg-8.dll libpng16-16.dll zlib1.dll)
+    endif()
+    if(_dll_src AND _dll_list)
+        set(_copy_cmds "")
+        foreach(_dll IN LISTS _dll_list)
+            if(EXISTS "${_dll_src}/${_dll}")
+                list(APPEND _copy_cmds
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${Q3MAP2_LIB_DIR}"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${_dll_src}/${_dll}" "${Q3MAP2_LIB_DIR}/${_dll}")
+            endif()
+        endforeach()
+        if(_copy_cmds)
+            add_custom_command(TARGET q3map2 POST_BUILD ${_copy_cmds}
+                COMMENT "复制 q3map2 第三方 DLL 到 ${Q3MAP2_LIB_DIR}")
+        endif()
     endif()
 endif()
 

@@ -50,6 +50,14 @@ if(WIN32)
         $<$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>:WIN64>
         _CRT_SECURE_NO_WARNINGS)
 endif()
+# ODE 刚体动力学支持（对应官方 Makefile 的 DP_LINK_ODE=dlopen：运行时加载
+# libode，不链接；未安装 ODE 时自动禁用 MOVETYPE_PHYSICS 相关功能）。
+# 默认启用，可用 -DXONOTIC_ENGINE_ODE=OFF 关闭。
+option(XONOTIC_ENGINE_ODE
+    "启用 ODE 刚体动力学（dlopen 运行时加载，对应官方默认行为）" ON)
+if(XONOTIC_ENGINE_ODE)
+    list(APPEND DP_PLATFORM_DEFS USEODE)
+endif()
 
 # 客户端特性定义（对应 Makefile 的 CFLAGS_CLIENT；服务器目标不携带）
 set(DP_CLIENT_FEATURE_DEFS

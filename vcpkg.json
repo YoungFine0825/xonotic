@@ -6,6 +6,7 @@
     "sdl2",
     "zlib",
     "mpir",
+    "ode",
     "libjpeg-turbo",
     "libpng",
     "libogg",
